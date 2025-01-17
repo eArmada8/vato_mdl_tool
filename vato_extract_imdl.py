@@ -213,7 +213,7 @@ def process_imdl (imdl_file, write_raw_buffers = False, write_binary_gltf = True
                     #print("Skipping section {}...".format(section_magic.decode()))
                     f.seek(section_size - 8, 1)
             # Materials
-            gltf_data['images'] = [{'uri':x} for x in textures]
+            gltf_data['images'] = [{'uri':'{0:02d}_{1}.png'.format(i, textures[i])} for i in range(len(textures))]
             # I can't figure out how to assign textures, so my best guess is via the names of the materials
             image_list = [x.split('.tga')[0] for x in textures]
             image_assignments_names = ['_'.join(x['name'].split('_')[1:]) if '_' in x['name'] else x for x in materials]
