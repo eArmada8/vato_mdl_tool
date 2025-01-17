@@ -214,11 +214,14 @@ def process_imdl (imdl_file, write_raw_buffers = False, write_binary_gltf = True
                     f.seek(section_size - 8, 1)
             # Materials
             gltf_data['images'] = [{'uri':x} for x in textures]
+            # I can't figure out how to assign textures, so my best guess is via the names of the materials
+            image_list = [x.split('.tga')[0] for x in textures]
+            image_assignments_names = ['_'.join(x['name'].split('_')[1:]) if '_' in x['name'] else x for x in materials]
+            image_assignments = [image_list.index(x) if x in image_list else 0 for x in image_assignments_names]
             for i in range(len(materials)):
                 g_material = { 'name': materials[i]['name'] }
                 sampler = { 'wrapS': 10497, 'wrapT': 10497 } # I have no idea if this setting exists
-                # The only models I have just have one texture, so I have no idea how to assign texture numbers
-                texture = { 'source': 0, 'sampler': len(gltf_data['samplers']) }
+                texture = { 'source': image_assignments[i], 'sampler': len(gltf_data['samplers']) }
                 g_material['pbrMetallicRoughness']= { 'baseColorTexture' : { 'index' : len(gltf_data['textures']), },\
                     'metallicFactor' : 0.0, 'roughnessFactor' : 1.0 }
                 gltf_data['samplers'].append(sampler)
