@@ -29,9 +29,10 @@ def read_null_terminated_string (f):
 
 # Thank you to https://github.com/mariodon/taikotools/ for the decompression algorithm
 def decompress_taiko_v (f):
-    output = bytes()
     unc_size_w_flags, = struct.unpack("<I", f.read(4))
     unc_size = (unc_size_w_flags & 0xFFFFFF00) >> 8
+    output = bytearray([0]*unc_size*2) # Double-sized buffer, in case of data corruption
+    out_loc = 0
     cmp_data = f.read()
     cmp_data_len = len(cmp_data)
     with io.BytesIO(cmp_data) as f:
@@ -43,29 +44,32 @@ def decompress_taiko_v (f):
                 back = ((flag & 0x7f) << 8) + int.from_bytes(f.read(1)) + 1
                 if ((flag & 0x80) != 0):
                     len_ += 1
-                end = len(output)
+                end = out_loc
                 for i in range(len_):
-                    output += output[end-back+i:end-back+i+1]
+                    output[out_loc] = output[end-back+i]
+                    out_loc += 1
             elif (c > 0x7F):
                 len_ = ((c >> 2) & 0x1F)
                 back = ((c & 0x3) << 8) + int.from_bytes(f.read(1)) + 1
                 if ((c & 0x80) != 0):
                     len_ += 3
-                end = len(output)
+                end = out_loc
                 for i in range(len_):
                     if i > end:
-                        output += output[end-1:end]
+                        output[out_loc] = output[end-1]
                     else:
-                        output += output[end-back+i:end-back+i+1]
+                        output[out_loc] = output[end-back+i]
+                    out_loc += 1
             elif (c > 0x3F):
                 len_ = (c >> 4) - 2
                 back = (c & 0x0F) + 1
-                end = len(output)
+                end = out_loc
                 for i in range(len_):
                     if i > end:
-                        output += output[end-1:end]
+                        output[out_loc] = output[end-1]
                     else:
-                        output += output[end-back+i:end-back+i+1]
+                        output[out_loc] = output[end-back+i]
+                    out_loc += 1
             elif (c == 0x00):
                 offset = f.tell() - 1
                 flag = int.from_bytes(f.read(1))
@@ -80,9 +84,11 @@ def decompress_taiko_v (f):
                         break
                 else:
                     len_ = flag & 0x7F
-                output += f.read(len_)
+                output[out_loc:out_loc+len_] = f.read(len_)
+                out_loc += len_
             else:
-                output += f.read(c)
+                output[out_loc:out_loc+c] = f.read(c)
+                out_loc += c
     return(output)
 
 def convert_vato_tga (f):
