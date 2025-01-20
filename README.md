@@ -33,4 +33,11 @@ Overwrite existing files without prompting.
 Double click the python script and it will search the current folder for all .txp files and export as .png.  Only supports 0x4 format (BRG5551).
 
 **Command line arguments:**
-`vato_extract_imdl.py [-h] txp_filename`
+`vato_extract_txp.py [-h] txp_filename`
+
+`-h, --help`
+Shows help message.
+
+## Known issues:
+- I have not figured out how textures are assigned to materials, so my script makes guesses based on material names.  This does not always work.  Please fix the images by changing them in Blender or equivalent.  *As of v1.0.1*, the script will ask you to make the guess first if the script is unable to automatically guess - this behavior can be reverted by editing the variable `ask_if_texture_does_not_match` at the very top of the script.
+- Some textures come out corrupted.  I have not figured out if this is due to a program with my script or the dumped assets.
