@@ -19,6 +19,9 @@ except ModuleNotFoundError as e:
     input("Press Enter to abort.")
     raise   
 
+#Set to False to default non-matching textures to the first texture
+ask_if_texture_does_not_match = True
+
 def make_fmt():
     return({'stride': '52', 'topology': 'trianglelist', 'format': 'DXGI_FORMAT_R16_UINT',\
         'elements': [{'id': '0', 'SemanticName': 'POSITION', 'SemanticIndex': '0',\
@@ -109,6 +112,7 @@ def fix_strides(submesh):
     return(submesh)
 
 def process_imdl (imdl_file, write_raw_buffers = False, write_binary_gltf = True, overwrite = False):
+    global ask_if_texture_does_not_match
     def add_child_to_node (nodes, i):
         current_node = i
         nodes[i]['children'] = []
@@ -217,7 +221,25 @@ def process_imdl (imdl_file, write_raw_buffers = False, write_binary_gltf = True
             # I can't figure out how to assign textures, so my best guess is via the names of the materials
             image_list = [x.split('.tga')[0] for x in textures]
             image_assignments_names = ['_'.join(x['name'].split('_')[1:]) if '_' in x['name'] else x for x in materials]
-            image_assignments = [image_list.index(x) if x in image_list else 0 for x in image_assignments_names]
+            if ask_if_texture_does_not_match == True:
+                image_assignments = []
+                for i in range(len(image_assignments_names)):
+                    if image_assignments_names[i] in image_list:
+                        image_assignments.append(image_list.index(image_assignments_names[i]))
+                    else:
+                        print("Material {} does not have a matching image!  Which image is correct?".format(image_assignments_names[i]))
+                        for j in range(len(image_list)):
+                            print("{0}. {1}".format(j, image_list[j]))
+                        img_choice = -1
+                        while not img_choice in range(len(image_assignments_names)):
+                            raw_input = input("Please select choice by number: ")
+                            try:
+                                img_choice = int(raw_input)
+                            except:
+                                pass
+                        image_assignments.append(img_choice)
+            else:
+                image_assignments = [image_list.index(x) if x in image_list else 0 for x in image_assignments_names]
             for i in range(len(materials)):
                 g_material = { 'name': materials[i]['name'] }
                 sampler = { 'wrapS': 10497, 'wrapT': 10497 } # I have no idea if this setting exists
