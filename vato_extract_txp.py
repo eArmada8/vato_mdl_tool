@@ -83,7 +83,7 @@ def decompress_taiko_v (f):
                     if flag == 0 and flag2 == 0 and peek == 0:
                         break
                 else:
-                    len_ = flag & 0x7F
+                    len_ += flag & 0x7F
                 output[out_loc:out_loc+len_] = f.read(len_)
                 out_loc += len_
             else:
