@@ -162,7 +162,7 @@ def process_imdl (imdl_file, write_raw_buffers = False, write_binary_gltf = True
                         material = {}
                         string_offset, = struct.unpack("<I", f.read(4))
                         material['name'] = read_from_string_dictionary (f, block_offsets["dictionary"] + string_offset)
-                        material['unk0'], material['unk1'] = struct.unpack("<iI", f.read(8))
+                        material['unk0'], material['flags'] = struct.unpack("<iI", f.read(8))
                         material['unk_parameters'] = list(struct.unpack("<IfIfIfIfIf", f.read(40)))
                         material['unk2'], material['unk3'], material['unk4'] = struct.unpack("<f2H", f.read(8))
                         material['unk_values'] = list(struct.unpack("<4I", f.read(16)))
@@ -244,8 +244,10 @@ def process_imdl (imdl_file, write_raw_buffers = False, write_binary_gltf = True
                 g_material = { 'name': materials[i]['name'] }
                 sampler = { 'wrapS': 10497, 'wrapT': 10497 } # I have no idea if this setting exists
                 texture = { 'source': image_assignments[i], 'sampler': len(gltf_data['samplers']) }
-                g_material['pbrMetallicRoughness']= { 'baseColorTexture' : { 'index' : len(gltf_data['textures']), },\
+                g_material['pbrMetallicRoughness'] = { 'baseColorTexture' : { 'index' : len(gltf_data['textures']), },\
                     'metallicFactor' : 0.0, 'roughnessFactor' : 1.0 }
+                if materials[i]['flags'] & 0x10:
+                    g_material['alphaMode'] = 'MASK'
                 gltf_data['samplers'].append(sampler)
                 gltf_data['textures'].append(texture)
                 gltf_data['materials'].append(g_material)

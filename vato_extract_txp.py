@@ -94,7 +94,8 @@ def decompress_taiko_v (f):
 def convert_vato_tga (f):
     def decode_vato_5551 (raw_color): # Thank you to Platinarei for this code
         return(tuple([x << 3 | x >> 2 for x in
-            [(raw_color & 0xF800) >> 11, (raw_color & 0x7C0) >> 6, (raw_color & 0x3E) >> 1]]))
+            [(raw_color & 0xF800) >> 11, (raw_color & 0x7C0) >> 6, (raw_color & 0x3E) >> 1]]\
+            + [(raw_color & 0x1) * 255]))
     desc_offset, tex_size, tex_offset, tex_format, width, height, maybe_mips, unk1, unk2 = struct.unpack("<4I2H3I", f.read(32))
     f.seek(desc_offset, 0)
     file_desc = read_null_terminated_string (f)
@@ -105,7 +106,7 @@ def convert_vato_tga (f):
     f.seek(tex_offset, 0)
     raw_bitmap = struct.unpack("<{}H".format(tex_size//2), f.read(tex_size))
     bitmap = [decode_vato_5551(x) for x in raw_bitmap]
-    im = Image.new('RGB', (width, height))
+    im = Image.new('RGBA', (width, height))
     im.putdata(bitmap)
     im.save('{}.png'.format(file_desc))
     return
