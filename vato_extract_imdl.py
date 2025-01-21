@@ -248,6 +248,8 @@ def process_imdl (imdl_file, write_raw_buffers = False, write_binary_gltf = True
                     'metallicFactor' : 0.0, 'roughnessFactor' : 1.0 }
                 if materials[i]['flags'] & 0x10:
                     g_material['alphaMode'] = 'MASK'
+                elif not materials[i]['flags'] & 0x02:
+                    g_material['alphaMode'] = 'BLEND'
                 gltf_data['samplers'].append(sampler)
                 gltf_data['textures'].append(texture)
                 gltf_data['materials'].append(g_material)

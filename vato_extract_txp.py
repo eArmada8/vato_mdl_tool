@@ -92,20 +92,31 @@ def decompress_taiko_v (f):
     return(output)
 
 def convert_vato_tga (f):
-    def decode_vato_5551 (raw_color): # Thank you to Platinarei for this code
+     # Thank you to Platinarei for the RBGA code
+    def decode_vato_5551 (raw_color):
         return(tuple([x << 3 | x >> 2 for x in
             [(raw_color & 0xF800) >> 11, (raw_color & 0x7C0) >> 6, (raw_color & 0x3E) >> 1]]\
             + [(raw_color & 0x1) * 255]))
+    def decode_vato_4444 (raw_color):
+        return(tuple([x * 17 for x in
+            [(raw_color & 0xF000) >> 12, (raw_color & 0x0F00) >> 8, (raw_color & 0x00F0) >> 4, (raw_color & 0x000F)]]))
     desc_offset, tex_size, tex_offset, tex_format, width, height, maybe_mips, unk1, unk2 = struct.unpack("<4I2H3I", f.read(32))
     f.seek(desc_offset, 0)
     file_desc = read_null_terminated_string (f)
     print("Processing {}...".format(file_desc))
-    if tex_format != 4:
-        input("{} is not format type 4, skipping!  Press Enter to continue.".format(file_desc))
+    if not tex_format in [4, 5, 6]:
+        input("{} is not format type 4 or 5, skipping!  Press Enter to continue.".format(file_desc))
         return
     f.seek(tex_offset, 0)
-    raw_bitmap = struct.unpack("<{}H".format(tex_size//2), f.read(tex_size))
-    bitmap = [decode_vato_5551(x) for x in raw_bitmap]
+    if tex_format in [4,5]:
+        raw_bitmap = struct.unpack("<{}H".format(tex_size//2), f.read(tex_size))
+        if tex_format == 4:
+            bitmap = [decode_vato_5551(x) for x in raw_bitmap]
+        elif tex_format == 5:
+            bitmap = [decode_vato_4444(x) for x in raw_bitmap]
+    else: # Format 6, R8G8B8_UINT
+        raw_bitmap = struct.unpack("<{}B".format(tex_size), f.read(tex_size))
+        bitmap = [(raw_bitmap[i*3], raw_bitmap[i*3+1], raw_bitmap[i*3+2]) for i in range(len(raw_bitmap)//3)]
     im = Image.new('RGBA', (width, height))
     im.putdata(bitmap)
     im.save('{}.png'.format(file_desc))
