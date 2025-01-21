@@ -31,7 +31,7 @@ def read_null_terminated_string (f):
 def decompress_taiko_v (f):
     unc_size_w_flags, = struct.unpack("<I", f.read(4))
     unc_size = (unc_size_w_flags & 0xFFFFFF00) >> 8
-    output = bytearray([0]*unc_size*2) # Double-sized buffer, in case of data corruption
+    output = bytearray([0]*unc_size)
     out_loc = 0
     cmp_data = f.read()
     cmp_data_len = len(cmp_data)
