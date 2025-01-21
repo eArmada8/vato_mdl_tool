@@ -104,8 +104,8 @@ def convert_vato_tga (f):
     f.seek(desc_offset, 0)
     file_desc = read_null_terminated_string (f)
     print("Processing {}...".format(file_desc))
-    if not tex_format in [4, 5, 6]:
-        input("{} is not format type 4 or 5, skipping!  Press Enter to continue.".format(file_desc))
+    if not tex_format in [4, 5, 6, 7]:
+        input("{0} is in an unsupported format, type {1}, skipping!  Press Enter to continue.".format(file_desc, tex_format))
         return
     f.seek(tex_offset, 0)
     if tex_format in [4,5]:
@@ -114,9 +114,12 @@ def convert_vato_tga (f):
             bitmap = [decode_vato_5551(x) for x in raw_bitmap]
         elif tex_format == 5:
             bitmap = [decode_vato_4444(x) for x in raw_bitmap]
-    else: # Format 6, R8G8B8_UINT
+    elif tex_format == 6: # Format 6, R8G8B8_UINT
         raw_bitmap = struct.unpack("<{}B".format(tex_size), f.read(tex_size))
         bitmap = [(raw_bitmap[i*3], raw_bitmap[i*3+1], raw_bitmap[i*3+2]) for i in range(len(raw_bitmap)//3)]
+    elif tex_format == 7: # Format 7, R8G8B8A8_UINT
+        raw_bitmap = struct.unpack("<{}B".format(tex_size), f.read(tex_size))
+        bitmap = [(raw_bitmap[i*4], raw_bitmap[i*4+1], raw_bitmap[i*4+2], raw_bitmap[i*4+3]) for i in range(len(raw_bitmap)//4)]
     im = Image.new('RGBA', (width, height))
     im.putdata(bitmap)
     im.save('{}.png'.format(file_desc))
