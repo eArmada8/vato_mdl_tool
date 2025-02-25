@@ -224,23 +224,29 @@ def process_imdl (imdl_file, write_raw_buffers = False, write_binary_gltf = True
             # I can't figure out how to assign textures, so my best guess is via the names of the materials
             image_list = [x.split('.tga')[0] for x in textures]
             image_assignments_names = ['_'.join(x['name'].split('_')[1:]) if '_' in x['name'] else x for x in materials]
-            if ask_if_texture_does_not_match == True:
+            internal_assignments = [x['unk_values'][2] for x in materials]
+            if all([x < len(image_list) for x in internal_assignments]):
+                image_assignments = internal_assignments
+            elif ask_if_texture_does_not_match == True:
                 image_assignments = []
                 for i in range(len(image_assignments_names)):
                     if image_assignments_names[i] in image_list:
                         image_assignments.append(image_list.index(image_assignments_names[i]))
                     else:
-                        print("Material {} does not have a matching image!  Which image is correct?".format(image_assignments_names[i]))
-                        for j in range(len(image_list)):
-                            print("{0}. {1}".format(j, image_list[j]))
-                        img_choice = -1
-                        while not img_choice in range(len(image_assignments_names)):
-                            raw_input = input("Please select choice by number: ")
-                            try:
-                                img_choice = int(raw_input)
-                            except:
-                                pass
-                        image_assignments.append(img_choice)
+                        if len(image_list) > 1:
+                            print("Material {} does not have a matching image!  Which image is correct?".format(image_assignments_names[i]))
+                            for j in range(len(image_list)):
+                                print("{0}. {1}".format(j, image_list[j]))
+                            img_choice = -1
+                            while not img_choice in range(len(image_assignments_names)):
+                                raw_input = input("Please select choice by number: ")
+                                try:
+                                    img_choice = int(raw_input)
+                                except:
+                                    pass
+                            image_assignments.append(img_choice)
+                        else:
+                            image_assignments.append(0)
             else:
                 image_assignments = [image_list.index(x) if x in image_list else 0 for x in image_assignments_names]
             for i in range(len(materials)):
