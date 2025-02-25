@@ -22,8 +22,8 @@ except ModuleNotFoundError as e:
 #Set to False to default non-matching textures to the first texture
 ask_if_texture_does_not_match = True
 
-def make_fmt():
-    return({'stride': '52', 'topology': 'trianglelist', 'format': 'DXGI_FORMAT_R16_UINT',\
+def make_fmt(weights = True):
+    fmt = {'stride': {True: '52', False: '32'}[weights], 'topology': 'trianglelist', 'format': 'DXGI_FORMAT_R16_UINT',\
         'elements': [{'id': '0', 'SemanticName': 'POSITION', 'SemanticIndex': '0',\
         'Format': 'R32G32B32_FLOAT', 'InputSlot': '0', 'AlignedByteOffset': '0',\
         'InputSlotClass': 'per-vertex', 'InstanceDataStepRate': '0'}, {'id': '1',\
@@ -32,12 +32,15 @@ def make_fmt():
         'InputSlotClass': 'per-vertex', 'InstanceDataStepRate': '0'}, {'id': '2',\
         'SemanticName': 'NORMAL', 'SemanticIndex': '0', 'Format': 'R32G32B32_FLOAT',\
         'InputSlot': '0', 'AlignedByteOffset': '20', 'InputSlotClass': 'per-vertex',\
-        'InstanceDataStepRate': '0'}, {'id': '3',\
+        'InstanceDataStepRate': '0'}]}
+    if weights:
+        fmt['elements'].extend([{'id': '3',\
         'SemanticName': 'BLENDINDICES', 'SemanticIndex': '0', 'Format': 'R8G8B8A8_UINT',\
         'InputSlot': '0', 'AlignedByteOffset': '32', 'InputSlotClass': 'per-vertex',\
         'InstanceDataStepRate': '0'}, {'id': '4', 'SemanticName': 'BLENDWEIGHTS', 'SemanticIndex': '0',\
         'Format': 'R32G32B32A32_FLOAT', 'InputSlot': '0', 'AlignedByteOffset': '36',\
-        'InputSlotClass': 'per-vertex', 'InstanceDataStepRate': '0'}]})
+        'InputSlotClass': 'per-vertex', 'InstanceDataStepRate': '0'}])
+    return(fmt)
 
 def read_from_string_dictionary (f, start_offset):
     current_loc = f.tell()
@@ -261,8 +264,6 @@ def process_imdl (imdl_file, write_raw_buffers = False, write_binary_gltf = True
                 if len(gltf_data['nodes'][i]['children']) == 0:
                     del(gltf_data['nodes'][i]['children'])
             # Meshes
-            fmt = make_fmt()
-            gltf_fmt = convert_fmt_for_gltf(fmt)
             node_list = [x['name'] for x in nodes]
             material_dict = {gltf_data['materials'][i]['name']:i for i in range(len(gltf_data['materials']))}
             if write_raw_buffers == True:
@@ -275,6 +276,12 @@ def process_imdl (imdl_file, write_raw_buffers = False, write_binary_gltf = True
                         os.mkdir(imdl_file[:-4])
                     overwrite_buffers = True
             for i in range(len(geoms)):
+                if not shapes[geoms[i]['vertex_buffer']]['blendweight_offset'] == 0:
+                    weights = True
+                else:
+                    weights = False
+                fmt = make_fmt(weights)
+                gltf_fmt = convert_fmt_for_gltf(fmt)
                 # Vertex Buffer
                 primitives = []
                 vb = []
@@ -289,14 +296,15 @@ def process_imdl (imdl_file, write_raw_buffers = False, write_binary_gltf = True
                 norm_buffer = list(struct.unpack("<{}f".format(shapes[geoms[i]['vertex_buffer']]['num_vertices']*3),
                     f.read(shapes[geoms[i]['vertex_buffer']]['num_vertices'] * 4 * 3)))
                 vb.append({'Buffer': [norm_buffer[j*3:j*3+3] for j in range(len(norm_buffer)//3)]})
-                wt_buffer = list(struct.unpack("<{}f".format(shapes[geoms[i]['vertex_buffer']]['num_vertices']*4),
-                    f.read(shapes[geoms[i]['vertex_buffer']]['num_vertices'] * 4 * 4)))
-                bind_matrix_buffer = f.read(64 * geoms[i]['num_bones'])
-                f.seek(block_offsets["blend_indices"] + (shapes[geoms[i]['vertex_buffer']]['blend_indices_offset'] * 1))
-                wt_index_buffer = list(struct.unpack("<{}B".format(shapes[geoms[i]['vertex_buffer']]['num_vertices']*4),
-                    f.read(shapes[geoms[i]['vertex_buffer']]['num_vertices'] * 4)))
-                vb.append({'Buffer': [wt_index_buffer[j*4:j*4+4] for j in range(len(wt_index_buffer)//4)]})
-                vb.append({'Buffer': [wt_buffer[j*4:j*4+4] for j in range(len(wt_buffer)//4)]})
+                if weights == True:
+                    wt_buffer = list(struct.unpack("<{}f".format(shapes[geoms[i]['vertex_buffer']]['num_vertices']*4),
+                        f.read(shapes[geoms[i]['vertex_buffer']]['num_vertices'] * 4 * 4)))
+                    bind_matrix_buffer = f.read(64 * geoms[i]['num_bones'])
+                    f.seek(block_offsets["blend_indices"] + (shapes[geoms[i]['vertex_buffer']]['blend_indices_offset'] * 1))
+                    wt_index_buffer = list(struct.unpack("<{}B".format(shapes[geoms[i]['vertex_buffer']]['num_vertices']*4),
+                        f.read(shapes[geoms[i]['vertex_buffer']]['num_vertices'] * 4)))
+                    vb.append({'Buffer': [wt_index_buffer[j*4:j*4+4] for j in range(len(wt_index_buffer)//4)]})
+                    vb.append({'Buffer': [wt_buffer[j*4:j*4+4] for j in range(len(wt_buffer)//4)]})
                 primitive = {"attributes":{}}
                 vb_stream = io.BytesIO()
                 write_vb_stream(vb, vb_stream, gltf_fmt, e='<', interleave = False)
@@ -357,22 +365,27 @@ def process_imdl (imdl_file, write_raw_buffers = False, write_binary_gltf = True
                     current_primitive["mode"] = 4 #TRIANGLES
                     current_primitive["material"] = meshes[geoms[i]['first_index_buffer']+j]['material']
                     primitives.append(current_primitive)
-                gltf_data['nodes'][geoms[i]['node']]['mesh'] = len(gltf_data['meshes'])
+                if not geoms[i]['node'] == 0xFFFF:
+                    gltf_data['nodes'][geoms[i]['node']]['mesh'] = len(gltf_data['meshes'])
+                else: # Add new node
+                    gltf_data['nodes'][0]['children'].append(len(gltf_data['nodes']))
+                    gltf_data['nodes'].append({'name': geoms[i]['name'], 'mesh': len(gltf_data['meshes'])})
                 gltf_data['meshes'].append({"primitives": primitives, "name": geoms[i]['name']})
                 # Skinning
-                f.seek(block_offsets["triangles"] + (geoms[i]['bone_palette_offset'] * 2))
-                bone_palette = list(struct.unpack("<{}H".format(geoms[i]['num_bones']), f.read(geoms[i]['num_bones'] * 2)))
-                vgmap = {node_list[bone_palette[i]]: i for i in range(len(bone_palette))}
-                gltf_data['nodes'][geoms[i]['node']]['skin'] = len(gltf_data['skins'])
-                gltf_data['skins'].append({"inverseBindMatrices": len(gltf_data['accessors']), "joints": bone_palette})
-                gltf_data['accessors'].append({"bufferView" : len(gltf_data['bufferViews']),\
-                    "componentType": 5126,\
-                    "count": geoms[i]['num_bones'],\
-                    "type": "MAT4"})
-                gltf_data['bufferViews'].append({"buffer": 0,\
-                    "byteOffset": len(giant_buffer),\
-                    "byteLength": len(bind_matrix_buffer)})
-                giant_buffer += bind_matrix_buffer
+                if weights == True:
+                    f.seek(block_offsets["triangles"] + (geoms[i]['bone_palette_offset'] * 2))
+                    bone_palette = list(struct.unpack("<{}H".format(geoms[i]['num_bones']), f.read(geoms[i]['num_bones'] * 2)))
+                    vgmap = {node_list[bone_palette[i]]: i for i in range(len(bone_palette))}
+                    gltf_data['nodes'][geoms[i]['node']]['skin'] = len(gltf_data['skins'])
+                    gltf_data['skins'].append({"inverseBindMatrices": len(gltf_data['accessors']), "joints": bone_palette})
+                    gltf_data['accessors'].append({"bufferView" : len(gltf_data['bufferViews']),\
+                        "componentType": 5126,\
+                        "count": geoms[i]['num_bones'],\
+                        "type": "MAT4"})
+                    gltf_data['bufferViews'].append({"buffer": 0,\
+                        "byteOffset": len(giant_buffer),\
+                        "byteLength": len(bind_matrix_buffer)})
+                    giant_buffer += bind_matrix_buffer
                 if write_raw_buffers == True and overwrite_buffers == True:
                     write_fmt(fmt, "{0}/{1:02d}_{2}.fmt".format(imdl_file[:-4], i, geoms[i]['name']))
                     write_vb(vb, "{0}/{1:02d}_{2}.vb".format(imdl_file[:-4], i, geoms[i]['name']), fmt)
