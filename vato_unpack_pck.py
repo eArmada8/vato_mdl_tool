@@ -35,10 +35,11 @@ def unpack_pck_block(f, header, pck_filename):
             extension = 'mdl'
         elif filedata[0:4] == b'IMTN':
             extension = 'mtn'
-        elif ((int.from_bytes(filedata[0:4], byteorder = 'little') < 0x100
-            and int.from_bytes(filedata[4:8], byteorder = 'little') < 0x100)
-            or filedata[0:4] == b'\xbd\xdb\xc2\x0b'):
+        elif (int.from_bytes(filedata[0:4], byteorder = 'little') < 0x100
+            and int.from_bytes(filedata[4:8], byteorder = 'little') < 0x100):
             extension = 'pck'
+        elif filedata[0:4] == b'\xbd\xdb\xc2\x0b':
+            extension = 'dat'
         elif b'GLTP' in filedata[0:0x20]:
             extension = 'txp'
         else:
