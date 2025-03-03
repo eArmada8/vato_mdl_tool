@@ -22,24 +22,37 @@ except ModuleNotFoundError as e:
 #Set to False to default non-matching textures to the first texture
 ask_if_texture_does_not_match = True
 
-def make_fmt(weights = True):
-    fmt = {'stride': {True: '52', False: '32'}[weights], 'topology': 'trianglelist', 'format': 'DXGI_FORMAT_R16_UINT',\
-        'elements': [{'id': '0', 'SemanticName': 'POSITION', 'SemanticIndex': '0',\
+def make_fmt(uv = True, normals = True, weights = True):
+    semantic_count = 0
+    fmt = {'stride': '12', 'topology': 'trianglelist', 'format': 'DXGI_FORMAT_R16_UINT',\
+        'elements': [{'id': str(semantic_count), 'SemanticName': 'POSITION', 'SemanticIndex': '0',\
         'Format': 'R32G32B32_FLOAT', 'InputSlot': '0', 'AlignedByteOffset': '0',\
-        'InputSlotClass': 'per-vertex', 'InstanceDataStepRate': '0'}, {'id': '1',\
-        'SemanticName': 'TEXCOORD', 'SemanticIndex': '0',\
-        'Format': 'R32G32_FLOAT', 'InputSlot': '0', 'AlignedByteOffset': '12',\
-        'InputSlotClass': 'per-vertex', 'InstanceDataStepRate': '0'}, {'id': '2',\
-        'SemanticName': 'NORMAL', 'SemanticIndex': '0', 'Format': 'R32G32B32_FLOAT',\
-        'InputSlot': '0', 'AlignedByteOffset': '20', 'InputSlotClass': 'per-vertex',\
-        'InstanceDataStepRate': '0'}]}
+        'InputSlotClass': 'per-vertex', 'InstanceDataStepRate': '0'}]}
+    stride = 12 # Position only
+    if uv:
+        semantic_count += 1
+        fmt['elements'].append({'id': str(semantic_count), 'SemanticName': 'TEXCOORD',\
+        'SemanticIndex': '0', 'Format': 'R32G32_FLOAT', 'InputSlot': '0', 'AlignedByteOffset': str(stride),\
+        'InputSlotClass': 'per-vertex', 'InstanceDataStepRate': '0'})
+        stride += 8
+    if normals:
+        semantic_count += 1
+        fmt['elements'].append({'id': str(semantic_count), 'SemanticName': 'NORMAL',\
+        'SemanticIndex': '0', 'Format': 'R32G32B32_FLOAT', 'InputSlot': '0', 'AlignedByteOffset': str(stride),\
+        'InputSlotClass': 'per-vertex', 'InstanceDataStepRate': '0'})
+        stride += 12
     if weights:
-        fmt['elements'].extend([{'id': '3',\
-        'SemanticName': 'BLENDINDICES', 'SemanticIndex': '0', 'Format': 'R8G8B8A8_UINT',\
-        'InputSlot': '0', 'AlignedByteOffset': '32', 'InputSlotClass': 'per-vertex',\
-        'InstanceDataStepRate': '0'}, {'id': '4', 'SemanticName': 'BLENDWEIGHTS', 'SemanticIndex': '0',\
-        'Format': 'R32G32B32A32_FLOAT', 'InputSlot': '0', 'AlignedByteOffset': '36',\
-        'InputSlotClass': 'per-vertex', 'InstanceDataStepRate': '0'}])
+        semantic_count += 1
+        fmt['elements'].append({'id': str(semantic_count), 'SemanticName': 'BLENDINDICES',\
+        'SemanticIndex': '0', 'Format': 'R8G8B8A8_UINT', 'InputSlot': '0', 'AlignedByteOffset': str(stride),\
+        'InputSlotClass': 'per-vertex', 'InstanceDataStepRate': '0'})
+        stride += 4
+        semantic_count += 1
+        fmt['elements'].append({'id': str(semantic_count), 'SemanticName': 'BLENDWEIGHTS',\
+        'SemanticIndex': '0', 'Format': 'R32G32B32A32_FLOAT', 'InputSlot': '0', 'AlignedByteOffset': str(stride),\
+        'InputSlotClass': 'per-vertex', 'InstanceDataStepRate': '0'})
+        stride += 16
+    fmt['stride'] = str(stride)
     return(fmt)
 
 def read_from_string_dictionary (f, start_offset):
@@ -282,11 +295,10 @@ def process_imdl (imdl_file, write_raw_buffers = False, write_binary_gltf = True
                         os.mkdir(imdl_file[:-4])
                     overwrite_buffers = True
             for i in range(len(geoms)):
-                if not shapes[geoms[i]['vertex_buffer']]['blendweight_offset'] == 0:
-                    weights = True
-                else:
-                    weights = False
-                fmt = make_fmt(weights)
+                uv = (not shapes[geoms[i]['vertex_buffer']]['uv_offset'] == 0)
+                normals = (not shapes[geoms[i]['vertex_buffer']]['norm_offset'] == 0)
+                weights = (not shapes[geoms[i]['vertex_buffer']]['blendweight_offset'] == 0)
+                fmt = make_fmt(uv, normals, weights)
                 gltf_fmt = convert_fmt_for_gltf(fmt)
                 # Vertex Buffer
                 primitives = []
@@ -296,12 +308,14 @@ def process_imdl (imdl_file, write_raw_buffers = False, write_binary_gltf = True
                 pos_buffer = list(struct.unpack("<{}f".format(shapes[geoms[i]['vertex_buffer']]['num_vertices']*3),
                     f.read(shapes[geoms[i]['vertex_buffer']]['num_vertices'] * 4 * 3)))
                 vb.append({'Buffer': [pos_buffer[j*3:j*3+3] for j in range(len(pos_buffer)//3)]})
-                uv_buffer = list(struct.unpack("<{}f".format(shapes[geoms[i]['vertex_buffer']]['num_vertices']*2),
-                    f.read(shapes[geoms[i]['vertex_buffer']]['num_vertices'] * 4 * 2)))
-                vb.append({'Buffer': [uv_buffer[j*2:j*2+2] for j in range(len(uv_buffer)//2)]})
-                norm_buffer = list(struct.unpack("<{}f".format(shapes[geoms[i]['vertex_buffer']]['num_vertices']*3),
-                    f.read(shapes[geoms[i]['vertex_buffer']]['num_vertices'] * 4 * 3)))
-                vb.append({'Buffer': [norm_buffer[j*3:j*3+3] for j in range(len(norm_buffer)//3)]})
+                if uv == True:
+                    uv_buffer = list(struct.unpack("<{}f".format(shapes[geoms[i]['vertex_buffer']]['num_vertices']*2),
+                        f.read(shapes[geoms[i]['vertex_buffer']]['num_vertices'] * 4 * 2)))
+                    vb.append({'Buffer': [uv_buffer[j*2:j*2+2] for j in range(len(uv_buffer)//2)]})
+                if normals == True:
+                    norm_buffer = list(struct.unpack("<{}f".format(shapes[geoms[i]['vertex_buffer']]['num_vertices']*3),
+                        f.read(shapes[geoms[i]['vertex_buffer']]['num_vertices'] * 4 * 3)))
+                    vb.append({'Buffer': [norm_buffer[j*3:j*3+3] for j in range(len(norm_buffer)//3)]})
                 if weights == True:
                     wt_buffer = list(struct.unpack("<{}f".format(shapes[geoms[i]['vertex_buffer']]['num_vertices']*4),
                         f.read(shapes[geoms[i]['vertex_buffer']]['num_vertices'] * 4 * 4)))
