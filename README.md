@@ -51,10 +51,10 @@ Shows help message.
 
 *Note:* There are .pck files inside the ObjectModel subfolders that do not seem to actual be .pck files.  Instead, they match the .dat files in BattleTalkScript.  vato_unpack_pck.py will not be able to do anything with these files.
 
-## vato_rename_base64_filenames.py
+### vato_rename_base64_filenames.py
 Double click the python script and it will rename all the files (not folders) via a recursive search with their base64 decoded name.
 
-## vato_rename_base64_filenames.py
+### vato_rename_base64_filenames.py
 Double click the python script and it will rename all the folders (not files) in the current folder with their base64 decoded name.  This is specifically to be used for the ObjectModel folder, where all the subfolders have base64-encoded names.
 
 ## Known issues:
