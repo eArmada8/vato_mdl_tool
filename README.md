@@ -38,5 +38,22 @@ Double click the python script and it will search the current folder for all .tx
 `-h, --help`
 Shows help message.
 
+### vato_unpack_pck.py
+Double click the python script and it will search the current folder for all .pck files and attempt to unpack them.  Note that if it unpacks .pck files, those are not added to the list of files to unpack, so you will need to run the script again to unpack those.
+
+**Command line arguments:**
+`vato_unpack_pck.py [-h] pck_filename`
+
+`-h, --help`
+Shows help message.
+
+*Note:* There are .pck files inside the ObjectModel subfolders that do not seem to actual be .pck files.  Instead, they match the .dat files in BattleTalkScript.  vato_unpack_pck.py will not be able to do anything with these files.
+
+## vato_rename_base64_filenames.py
+Double click the python script and it will rename all the files (not folders) via a recursive search with their base64 decoded name.
+
+## vato_rename_base64_filenames.py
+Double click the python script and it will rename all the folders (not files) in the current folder with their base64 decoded name.  This is specifically to be used for the ObjectModel folder, where all the subfolders have base64-encoded names.
+
 ## Known issues:
 - I have not figured out how textures are assigned to materials, so my script makes guesses based on material names.  This does not always work.  Please fix the images by changing them in Blender or equivalent.  *As of v1.0.1*, the script will ask you to make the guess first if the script is unable to automatically guess - this behavior can be reverted by editing the variable `ask_if_texture_does_not_match` at the very top of the script.
