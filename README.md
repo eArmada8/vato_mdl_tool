@@ -41,6 +41,8 @@ Shows help message.
 ### vato_unpack_pck.py
 Double click the python script and it will search the current folder for all .pck files and attempt to unpack them.  Note that if it unpacks .pck files, those are not added to the list of files to unpack, so you will need to run the script again to unpack those.
 
+It only supports .pck files with flags 0x00 and 0x80 at this time.  (Flag 0x10 appears to only hold strings, not files.)
+
 **Command line arguments:**
 `vato_unpack_pck.py [-h] pck_filename`
 
