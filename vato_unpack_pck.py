@@ -21,45 +21,48 @@ def read_null_terminated_string (f):
         null_term_string += f.read(1)
     return(null_term_string[:-1].decode())
 
-def unpack_pck_block(f, header, pck_filename):
-    entries = []
-    for i in range(header['num_entries']):
-        offset, size = struct.unpack("<2I", f.read(8))
-        entries.append({'offset': offset, 'size': size})
-    for i in range(len(entries)):
-        f.seek(entries[i]['offset'])
-        filedata = f.read(entries[i]['size'])
-        if filedata[0:4] == b'IANM':
-            extension = 'anm'
-        elif filedata[0:4] == b'IMDL':
-            extension = 'mdl'
-        elif filedata[0:4] == b'IMTN':
-            extension = 'mtn'
-        elif (int.from_bytes(filedata[0:4], byteorder = 'little') < 0x100
-            and int.from_bytes(filedata[4:8], byteorder = 'little') < 0x100):
-            extension = 'pck'
-        elif filedata[0:4] == b'\xbd\xdb\xc2\x0b':
-            extension = 'dat'
-        elif b'GLTP' in filedata[0:0x20]:
-            extension = 'txp'
-        else:
-            extension = 'bin'
-        open(pck_filename[:-4]+"_{0}.{1}".format(i, extension), 'wb').write(filedata)
+def write_pck_entry (filedata, entry_name):
+    if filedata[0:4] == b'IANM':
+        extension = 'anm'
+    elif filedata[0:4] == b'IMDL':
+        extension = 'mdl'
+    elif filedata[0:4] == b'IMTN':
+        extension = 'mtn'
+    elif filedata[0:4] == b'\xbd\xdb\xc2\x0b':
+        extension = 'dat'
+    elif b'GLTP' in filedata[0:0x20]:
+        extension = 'txp'
+    elif (int.from_bytes(filedata[0:4], byteorder = 'little') < 0x100
+        and int.from_bytes(filedata[4:8], byteorder = 'little') < 0x100
+        and int.from_bytes(filedata[8:16], byteorder = 'little') == 0):
+        extension = 'pck'
+    else:
+        extension = 'bin'
+    if not entry_name[:-4] == '.' + extension:
+        entry_name += '.' + extension
+    if extension == 'pck' and int.from_bytes(filedata[0:4], byteorder = 'little') > 0:
+        #Internal pck file, execute recursive function to unpack
+        with io.BytesIO(filedata) as internal_f:
+            unpack_pck(internal_f, entry_name)
+    else:
+        open("{}".format(entry_name), 'wb').write(filedata)
     return
 
 def unpack_pck (f, pck_filename):
     header = {}
     header['num_entries'], header['flags'], header['unk'], header['unk2'] = struct.unpack("<4I", f.read(16))
-    if header['flags'] == 0:
-        unpack_pck_block(f, header, pck_filename)
-    elif header['flags'] == 0x80:
-        # Can there be more than one of these pck-embedded pcks?
-        offset, size = struct.unpack("<2I", f.read(8))
-        internal_pck_filename = read_null_terminated_string(f) + '.pck'
-        f.seek(offset)
-        internal_pck = f.read(size)
-        with io.BytesIO(internal_pck) as internal_f:
-            unpack_pck(internal_f, internal_pck_filename)
+    if header['flags'] in [0, 0x80]:
+        for i in range(header['num_entries']):
+            offset, size = struct.unpack("<2I", f.read(8))
+            entry_name = pck_filename[:-4]+"_{0}".format(i)
+            entry_end_offset = f.tell()
+            if header['flags'] == 0x80:
+                entry_end_offset = f.tell() + 0x80
+                entry_name += read_null_terminated_string(f)
+            f.seek(offset)
+            filedata = f.read(size)
+            write_pck_entry (filedata, entry_name)
+            f.seek(entry_end_offset)
     else: # I think these are compressed or something
         print("{} is in a .pck format that is not supported yet!".format(pck_filename))
     return
