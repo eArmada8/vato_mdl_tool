@@ -12,7 +12,7 @@ I am as always very thankful for the dedicated reverse engineers at the Kiseki m
 
 ## Usage:
 ### vato_extract_imdl.py
-Double click the python script and it will search the current folder for all .mdl files and export as .glb.  To obtain textures, use vato_extract_txp.py.
+Double click the python script and it will search the current folder for all .mdl files (models) and export as .glb.  To obtain textures, use vato_extract_txp.py.
 
 **Command line arguments:**
 `vato_extract_imdl.py [-h] [-t] [-d] [-o] mdl_filename`
@@ -22,6 +22,23 @@ Output .gltf/.bin format instead of .glb format.
 
 `-d, --dumprawbuffers`
 Dump .fmt/.ib/.vb/.vgmap files in a folder with the same name as the .mdl file.  Use DarkStarSword's plugin to view.  Separate materials will be combined into a single mesh with this option.
+
+`-h, --help`
+Shows help message.
+
+`-o, --overwrite`
+Overwrite existing files without prompting.
+
+### vato_extract_imtn.py
+Double click the python script and it will search the current folder for all .mtn files (animations) and export as .glb.
+
+The script requires an .mdl file available to obtain a skeleton, because animation files do not come with a skeleton.  If 00_base.mdl is available, it will always be chosen, even if another .mdl is also in the folder, otherwise it will choose the first file it finds.  (I did not write in logic to choose, or a menu system...  please just put a single .mdl file in the folder.)
+
+**Command line arguments:**
+`vato_extract_imtn.py [-h] [-t] [-d] [-o] mtn_filename`
+
+`-t, --textformat`
+Output .gltf/.bin format instead of .glb format.
 
 `-h, --help`
 Shows help message.
@@ -59,3 +76,4 @@ Double click the python script and it will rename all the folders (not files) in
 
 ## Known issues:
 - I have not figured out how textures are assigned to materials, so my script makes guesses based on material names.  This does not always work.  Please fix the images by changing them in Blender or equivalent.  *As of v1.0.1*, the script will ask you to make the guess first if the script is unable to automatically guess - this behavior can be reverted by editing the variable `ask_if_texture_does_not_match` at the very top of the script.
+- For animations, only nodK is implemented (TRS animations).  I have not implemented visK (I think for making meshes appear and disappear) since there is no way to put this into glTF, nor have I implemented smpK (I have no idea what this even is, but it's found in the effects files).
