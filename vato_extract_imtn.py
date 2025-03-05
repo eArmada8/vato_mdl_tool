@@ -131,8 +131,6 @@ def process_imtn (imtn_file, skel_struct, write_binary_gltf = True, overwrite = 
                     ani_block['outputs'].append(list(struct.unpack("<{}f".format(num_vals), f.read(num_vals*4))))
                 ani_struct.append(ani_block)
             node_dict = {gltf_data['nodes'][j]['name']:j for j in range(len(gltf_data['nodes']))}
-            if not all([x['bone'] in node_dict.keys() for x in ani_struct]):
-                input("Warning! This animation may not be compatible with the provided .mdl file! Press Enter to continue.")
             for i in range(len(ani_struct)):
                 if ani_struct[i]['bone'] in node_dict.keys():
                     sampler = { 'input': len(gltf_data['accessors']), 'interpolation': 'LINEAR', 'output':  len(gltf_data['accessors'])+1 }
